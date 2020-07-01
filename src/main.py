@@ -25,15 +25,15 @@ def _coco_remove_images_without_annotations(dataset, cat_list=None):
 
     #assert isinstance(dataset, torchvision.datasets.CocoDetection)
     ids = []
-    for ds_idx, img_id in enumerate(dataset.ids):
+    for ds_idx, img_id in enumerate(dataset.images):
         ann_ids = dataset.coco.getAnnIds(imgIds=img_id, iscrowd=None)
         anno = dataset.coco.loadAnns(ann_ids)
         if cat_list:
             anno = [obj for obj in anno if obj["category_id"] in cat_list]
         if _has_valid_annotation(anno):
             ids.append(ds_idx)
-    dataset.ids = ids
-    dataset.num_samples = len(dataset.ids)
+    dataset.images = ids
+    dataset.num_samples = len(dataset.images)
     #dataset = torch.utils.data.Subset(dataset, ids)
     return dataset
 

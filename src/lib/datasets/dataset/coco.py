@@ -63,8 +63,8 @@ class COCO(data.Dataset):
     print('==> initializing coco 2017 {} data.'.format(split))
     self.coco = coco.COCO(self.annot_path)
     #self.images = self.coco.getImgIds()
-    self.ids = list(sorted(self.coco.imgs.keys()))
-    self.num_samples = len(self.ids)
+    self.images = list(sorted(self.coco.imgs.keys()))
+    self.num_samples = len(self.images)
 
     print('Loaded {} {} samples'.format(split, self.num_samples))
 
