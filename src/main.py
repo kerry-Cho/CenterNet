@@ -15,11 +15,34 @@ from logger import Logger
 from datasets.dataset_factory import get_dataset
 from trains.train_factory import train_factory
 
+def _coco_remove_images_without_annotations(dataset, cat_list=None):
+    def _has_valid_annotation(anno):
+        # if it's empty, there is no annotation
+        if len(anno) == 0:
+            return False
+        # if more than 1k pixels occupied in the image
+        return sum(obj["area"] for obj in anno) > 1000
+
+    #assert isinstance(dataset, torchvision.datasets.CocoDetection)
+    ids = []
+    for ds_idx, img_id in enumerate(dataset.ids):
+        ann_ids = dataset.coco.getAnnIds(imgIds=img_id, iscrowd=None)
+        anno = dataset.coco.loadAnns(ann_ids)
+        if cat_list:
+            anno = [obj for obj in anno if obj["category_id"] in cat_list]
+        if _has_valid_annotation(anno):
+            ids.append(ds_idx)
+    dataset.ids = ids
+    dataset.num_samples = len(dataset.ids)
+    #dataset = torch.utils.data.Subset(dataset, ids)
+    return dataset
+
 
 def main(opt):
   torch.manual_seed(opt.seed)
   torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
   Dataset = get_dataset(opt.dataset, opt.task)
+  
   opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
   print(opt)
 
@@ -41,8 +64,14 @@ def main(opt):
   trainer.set_device(opt.gpus, opt.chunk_sizes, opt.device)
 
   print('Setting up data...')
+
+  val_dataset = Dataset(opt, 'val')
+  if opt.dataset == 'coco':
+    val_dataset = _coco_remove_images_without_annotations(val_dataset, val_dataset.cat_ids)
+  
+  print('val_dataset sizes {} samples'.format(val_dataset.num_samples))
   val_loader = torch.utils.data.DataLoader(
-      Dataset(opt, 'val'), 
+      val_dataset, 
       batch_size=1, 
       shuffle=False,
       num_workers=1,
@@ -54,8 +83,13 @@ def main(opt):
     val_loader.dataset.run_eval(preds, opt.save_dir)
     return
 
+  train_dataset = Dataset(opt, 'train')
+  if opt.dataset == 'coco':
+    train_dataset = _coco_remove_images_without_annotations(train_dataset, train_dataset.cat_ids)
+  print('train_dataset sizes {} samples'.format(train_dataset.num_samples))
+  
   train_loader = torch.utils.data.DataLoader(
-      Dataset(opt, 'train'), 
+      train_dataset, 
       batch_size=opt.batch_size, 
       shuffle=True,
       num_workers=opt.num_workers,
