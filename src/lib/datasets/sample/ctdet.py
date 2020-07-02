@@ -32,6 +32,8 @@ class CTDetDataset(data.Dataset):
     img_path = os.path.join(self.img_dir, file_name)
     ann_ids = self.coco.getAnnIds(imgIds=[img_id])
     anns = self.coco.loadAnns(ids=ann_ids)
+    ## remove unused 
+    anns = [obj for obj in anns if obj["category_id"] in self.cat_ids]
     num_objs = min(len(anns), self.max_objs)
 
     img = cv2.imread(img_path)
